@@ -1,10 +1,13 @@
 import numpy as np
 
 class Network:
-    def __init__(self, shape, transfer):
+    def __init__(self, shape, transfer, threshold):
         self.nlayers = shape.size
         self.layers = []
-        self.o = []
+        self.o = 0.
+        self.e = 0.
+        self.threshold = threshold
+        self.lf = 0.5
         for i in range(1, self.nlayers):
             self.layers.append(Layer(shape[i], shape[i - 1], transfer))
 
@@ -12,19 +15,22 @@ class Network:
         for l in self.layers:
             x = l.forward(x)
         self.o = x
-        return self.o
+        return self.threshold(self.o)
 
     def backprop(self, t):
-        self.layers[self.nlayers - 2].e = t - self.o
+        self.e = t - self.o
+        self.layers[self.nlayers - 2].e = self.e
         for l in range(self.nlayers - 2, 0, -1):
             self.layers[l - 1].error(self.layers[l])
         for l in self.layers:
-            l.w += l.e * l.dx * l.x
+            l.w += ((l.x.T * l.dx) * l.e) * self.lf
+            l.b += (l.dx * l.e) * self.lf
 
 class Layer:
     def __init__(self, nneurons, ninput, transfer):
-        self.w = np.random.rand(ninput, nneurons)
-        self.b = np.ones(nneurons) * 0.1
+        self.w = np.random.rand(ninput, nneurons) if nneurons > 1 else np.random.rand(ninput)
+        self.b = 0.1
+        self.nneurons = nneurons
         self.transfer = transfer
         self.e = []
         self.x = []
@@ -32,7 +38,11 @@ class Layer:
 
     def forward(self, x):
         self.x = x
-        a = np.dot(self.x, self.w) + self.b
+        for i in range(1, self.nneurons):
+            self.x = np.vstack((self.x, x))
+        a = np.dot(self.x, self.w)
+        a = a[0] if a.ndim > 1 else a
+        a += self.b
         self.dx = self.transfer.der(a)
         return self.transfer.out(a)
 
@@ -43,29 +53,8 @@ class Layer:
         print("x={0}".format(self.x))
         print("w={0}".format(self.w))
         print("b={0}".format(self.b))
-
-class Node:
-    """a node in the network"""
-    def __init__(self, id, transfer, bias, is_output=False):
-        self.id = id
-        self.transfer = transfer
-        self.bias = bias
-        self.x = []
-        self.w = []
-
-    def activation(self):
-        return self.bias + dot(self.input.w, self.input.x)
-    
-    def output(self):
-        return self.transfer.output(self.activation())
-
-class Link:
-    """a link between nodes"""
-    def __init__(self):
-        self.source = []
-        self.destination = []
-        self.x = []
-        self.w = []
+        print("dx={0}".format(self.dx))
+        print("e={0}".format(self.e))
 
 class Step:
     def out(self, n):

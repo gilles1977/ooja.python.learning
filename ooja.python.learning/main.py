@@ -1,27 +1,32 @@
 from ooja import network
-from numpy import random
-from numpy import array
+import numpy as np
 
-shape = array([2, 3, 2, 1])
-n = network.Network(shape, network.Sigmoid())
-x = array([0, 1])
-o = n.forward(x)
+shape = np.array([2, 2, 1])
+n = network.Network(shape, network.Sigmoid(), lambda o: 0 if o < 0.5 else 1)
+s = np.array([[0, 1, 1],
+           [1, 1, 0],
+           [1, 0, 1],
+           [0, 0, 0]])
+e = 1.
+for l in n.layers:
+        l.display()
+
+for i in range(1, 5000):
+    print('\r'+str(i)+'      '+str(e), sep='', end='', flush=True)
+    if e < 0.1:
+       break
+    e = 0.
+    for x in s:
+        o = n.forward(x[:2].T)
+        e += np.power(n.e, 2)
+        n.backprop(x[2])
+    e = 0.5 * np.sqrt(e / s.size)
+
+for x in s:
+    print()
+    o = n.forward(x[:2].T)
+    print("x={0}".format(x[:2]))
+    print("o={0}".format(o))
 
 for l in n.layers:
     l.display()
-print("o={0}".format(o))
-
-n.backprop(1)
-for l in n.layers:
-    l.display()
-
-#n = network.Node(1, f, 0.1)
-#l = network.Link()
-#l.x = array([0, 1])
-#l.w = random.rand(2)
-#n.input = l
-#s = n.output()
-
-#print(l.x)
-#print(l.w)
-#print(s)
