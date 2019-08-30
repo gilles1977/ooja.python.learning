@@ -1,32 +1,48 @@
 from ooja import network
 import numpy as np
+import matplotlib.pyplot as plt
+import netdraw as nd
+from sklearn import datasets
 
-shape = np.array([2, 2, 1])
-n = network.Network(shape, network.Sigmoid(), lambda o: 0 if o < 0.5 else 1)
-s = np.array([[0, 1, 1],
-           [1, 1, 0],
-           [1, 0, 1],
-           [0, 0, 0]])
+#data = np.array([[0, 1],
+#     [1, 1],
+#     [1, 0],
+#     [0, 0]])
+#target = np.array([1,
+#     0,
+#     1,
+#     0])
+#mapper = 1
+s = datasets.load_iris()
+data = s.data
+target = s.target
+mapper = np.arange(3)
+ni = data.shape[1]
+no = len(mapper)
+nsamples = len(data)
+
+shape = np.array([ni, 7, no])
+n = network.Network(shape, network.Sigmoid(), lambda o: (o >= 0.5) * 1)
+
+
 e = 1.
-for l in n.layers:
-        l.display()
-
-for i in range(1, 5000):
+i = 0
+for i in range(1, 50000):
     print('\r'+str(i)+'      '+str(e), sep='', end='', flush=True)
     if e < 0.1:
        break
     e = 0.
-    for x in s:
-        o = n.forward(x[:2].T)
-        e += np.power(n.e, 2)
-        n.backprop(x[2])
-    e = 0.5 * np.sqrt(e / s.size)
+    for x in range(0, len(data)):
+        o = n.forward(data[x])
+        t = (target[x] == mapper) * 1
+        n.backprop(t, e)
+        e += np.sum(n.e**2)
+    e = 0.5 * np.sqrt(e/nsamples)
 
-for x in s:
+for x in range(0, len(data)):
     print()
-    o = n.forward(x[:2].T)
-    print("x={0}".format(x[:2]))
-    print("o={0}".format(o))
+    o = n.forward(data[x])
+    t = (target[x] == mapper) * 1
+    print("x={0} --> t={1} o={2}".format(data[x], t, o))
 
-for l in n.layers:
-    l.display()
+n.display(e, i)

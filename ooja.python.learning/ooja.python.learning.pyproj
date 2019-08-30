@@ -24,6 +24,9 @@
     <Compile Include="main.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="netdraw.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ooja\network.py">
       <SubType>Code</SubType>
     </Compile>
