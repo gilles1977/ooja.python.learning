@@ -21,13 +21,13 @@ ni = data.shape[1]
 no = len(mapper)
 nsamples = len(data)
 
-shape = np.array([ni, 7, no])
+shape = np.array([ni, 4, 7, no])
 n = network.Network(shape, network.Sigmoid(), lambda o: (o >= 0.5) * 1)
 
 
 e = 1.
 i = 0
-for i in range(1, 50000):
+for i in range(1, 200):
     print('\r'+str(i)+'      '+str(e), sep='', end='', flush=True)
     if e < 0.1:
        break
@@ -36,7 +36,7 @@ for i in range(1, 50000):
         o = n.forward(data[x])
         t = (target[x] == mapper) * 1
         n.backprop(t, e)
-        e += np.sum(n.e**2)
+        e += np.mean(np.square(n.e))
     e = 0.5 * np.sqrt(e/nsamples)
 
 for x in range(0, len(data)):

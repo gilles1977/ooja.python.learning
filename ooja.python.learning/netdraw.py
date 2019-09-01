@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def draw_neural_net(ax, left, right, bottom, top, layer_sizes, coefs_, n_iter_, loss_):
+def draw_neural_net(ax, left, right, bottom, top, layer_sizes, coefs_, bias, n_iter_, loss_):
     '''
     Draw a neural network cartoon using matplotilb.
     
@@ -81,7 +81,7 @@ def draw_neural_net(ax, left, right, bottom, top, layer_sizes, coefs_, n_iter_, 
                     else:
                         ym1 = ym + (v_spacing/8.+0.04)*np.sin(rot_mo_rad)
                 plt.text( xm1, ym1,\
-                         str(round(coefs_[n][m, o],4) if coefs_[n].ndim > 1 else round(coefs_[n][m],4)),\
+                         str(round(coefs_[n][o, m],4) if coefs_[n].ndim > 1 else round(coefs_[n][m],4)),\
                          rotation = rot_mo_deg, \
                          fontsize = 10)
     # Edges between bias and nodes
@@ -104,7 +104,7 @@ def draw_neural_net(ax, left, right, bottom, top, layer_sizes, coefs_, n_iter_, 
             xo1 = xo2 -0.05 *np.cos(rot_bo_rad)
             yo1 = yo2 -0.05 *np.sin(rot_bo_rad)
             plt.text( xo1, yo1,\
-                 str(round(coefs_[n][-1][o],4) if coefs_[n].ndim > 1 else round(coefs_[n][-1],4)),\
+                 str(round(bias[n][o],4)),\
                  rotation = rot_bo_deg, \
                  fontsize = 10)
 
