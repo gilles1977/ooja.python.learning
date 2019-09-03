@@ -81,7 +81,7 @@ def draw_neural_net(ax, left, right, bottom, top, layer_sizes, coefs_, bias, n_i
                     else:
                         ym1 = ym + (v_spacing/8.+0.04)*np.sin(rot_mo_rad)
                 plt.text( xm1, ym1,\
-                         str(round(coefs_[n][o, m],4) if coefs_[n].ndim > 1 else round(coefs_[n][m],4)),\
+                         str(round(coefs_[n][m, o],4) if coefs_[n].ndim > 1 else round(coefs_[n][m],4)),\
                          rotation = rot_mo_deg, \
                          fontsize = 10)
     # Edges between bias and nodes

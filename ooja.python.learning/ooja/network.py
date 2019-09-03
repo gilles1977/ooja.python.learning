@@ -12,9 +12,12 @@ class Network:
         self.e = 0.
         self.threshold = threshold
         self.transfer = transfer
-        self.lf = 0.5
         for i in range(1, self.nlayers + 1):
-            self.layers.append(Layer(shape[i], shape[i - 1], transfer))
+            self.layers.append(Layer(shape[i - 1], shape[i], transfer))
+
+    def addlayer(self, ninput, nneurons, transfer):
+        self.layers.append(Layer(ninput, nneurons, transfer))
+        self.nlayers += 1
 
     def forward(self, x):
         for l in self.layers:
@@ -23,16 +26,18 @@ class Network:
         return self.threshold(self.o)
 
     def backprop(self, t, e):
-        lf = self.transfer.out(np.abs(e))
+        lr = self.transfer.out(np.abs(e))
+        alpha = 1. -lr
         self.e = t - self.o
-        outl = self.layers[self.nlayers - 1]
-        outl.e = self.e
-        outl.dx = self.e * self.transfer.der(self.o)
+        self.layers[-1].e = self.e
+        self.layers[-1].dx = self.e * self.layers[-1].transfer.der(self.o)
         for l in range(self.nlayers - 1, 0, -1):
             self.layers[l - 1].loss(self.layers[l])
         for l in self.layers:
-            l.w += (l.dx * np.atleast_2d(l.x).T * lf).T
-            l.b += l.dx * lf
+            l.dw = (lr * np.atleast_2d(l.x).T * l.dx) + (alpha * l.dw)
+            l.w += l.dw
+            l.db = (lr * l.dx) + (alpha * l.db)
+            l.b += l.db
 
     def display(self, e, i):
         fig = plt.figure(figsize=(12, 12))
@@ -46,27 +51,29 @@ class Network:
         nd.draw_neural_net(ax, .1, .9, .1, .9, self.shape, w, b, i, e)
         for l in self.layers:
             l.display()
-        plt.show()
+        #plt.show()
 
 class Layer:
-    def __init__(self, nneurons, ninput, transfer):
-        self.w = 2 * (np.random.rand(nneurons, ninput) if nneurons > 1 else np.random.rand(ninput)) - 1
-        self.b = np.random.rand(nneurons)
+    def __init__(self, ninput, nneurons, transfer):
+        self.w = 2 * (np.random.rand(ninput, nneurons)) - 1
+        self.b = 2 * np.random.rand(nneurons) - 1
         self.nneurons = nneurons
         self.transfer = transfer
-        self.e = []
-        self.x = []
-        self.y = []
-        self.dx = []
+        self.e = None
+        self.x = None
+        self.o = None
+        self.dx = None
+        self.dw = 0.
+        self.db = 0.
 
     def forward(self, x):
         self.x = x
-        self.y = self.transfer.out(np.dot(self.w, self.x) + self.b)
-        return self.y
+        self.o = self.transfer.out(np.dot(self.x, self.w) + self.b)
+        return self.o
 
     def loss(self, layer):
-        self.e = np.dot(layer.dx, layer.w)
-        self.dx = self.e * self.transfer.der(self.y)
+        self.e = np.dot(layer.dx, layer.w.T)
+        self.dx = self.e * self.transfer.der(self.o)
 
     def display(self):
         print("x={0}".format(self.x))
