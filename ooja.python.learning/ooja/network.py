@@ -5,17 +5,18 @@ import netdraw as nd
 from sklearn import metrics
 
 class Network:
-    def __init__(self, threshold):
+    def __init__(self, threshold, cost=None):
         self.nlayers = 0
         self.layers = []
         self.y = 0.
         self.E = 0.
         self.threshold = threshold
+        self.cost = cost
 
-    def addlayer(self, nneurons, ninput=None, transfer=None):
+    def addlayer(self, nneurons, ninput=None, transfer=None, cost=None):
         if ninput == None:
             ninput = self.layers[-1].nneurons
-        self.layers.append(Layer(ninput, nneurons, transfer))
+        self.layers.append(Layer(ninput, nneurons, transfer, cost))
         self.nlayers += 1
 
     def forward(self, x):
@@ -28,10 +29,13 @@ class Network:
         momentum = .9
         outlayer = self.layers[-1]
 
-        self.E = np.sum(np.square(t - self.y)) / 2
+        #self.E = np.sum(np.square(t - self.y)) / 2
+        self.E = outlayer.cost.out(self.y, t)
+        
+        #outlayer.dEdy = t - self.y
+        #outlayer.dEdx = outlayer.transfer.der(outlayer.ti) * outlayer.dEdy
 
-        outlayer.dEdy = t - self.y
-        outlayer.dEdx = outlayer.transfer.der(outlayer.ti) * outlayer.dEdy
+        outlayer.dEdx = outlayer.cost.der(self.y, t, outlayer)
         outlayer.dEdw = np.dot(outlayer.x.T,  outlayer.dEdx)
         outlayer.dEdb = np.sum(outlayer.dEdx, axis=0)
 
@@ -39,8 +43,8 @@ class Network:
             self.layers[l - 1].gradient(self.layers[l])
 
         for l in self.layers:
-            l.w += (lr * l.dEdw)
-            l.b += (lr * l.dEdb)
+            l.w -= (lr * l.dEdw)
+            l.b -= (lr * l.dEdb)
 
     def display(self, e, i):
         fig = plt.figure(figsize=(12, 12))
@@ -48,21 +52,23 @@ class Network:
         ax.axis('off')
         w = []
         b = []
+        shape = [self.layers[0].x.size]
         for l in range(0, self.nlayers):
             w.append(self.layers[l].w)
             b.append(self.layers[l].b)
-        #nd.draw_neural_net(ax, .1, .9, .1, .9, self.shape, w, b, i, e)
+            shape.append(self.layers[l].nneurons)
+        nd.draw_neural_net(ax, .1, .9, .1, .9, shape, w, b, i, e)
         for l in self.layers:
             l.display()
-        #plt.show()
+        plt.show()
 
 class Layer:
-    def __init__(self, ninput, nneurons, transfer):
+    def __init__(self, ninput, nneurons, transfer, cost):
         self.w = 2 * (np.random.rand(ninput, nneurons)) - 1
         self.b = 2 * np.random.rand(nneurons) - 1
         self.nneurons = nneurons
         self.transfer = transfer
-        self.e = None
+        self.cost = cost
         self.x = None
         self.y = None
         self.ti = None
@@ -86,8 +92,10 @@ class Layer:
     def display(self):
         print("x={0}".format(self.x))
         print("w={0}".format(self.w))
-        print("dx={0}".format(self.dx))
-        print("e={0}".format(self.e))
+        print("dEdy={0}".format(self.dEdy))
+        print("dEdx={0}".format(self.dEdx))
+        print("dEdw={0}".format(self.dEdw))
+        print("dEdb={0}".format(self.dEdb))
 
 class Step:
     def out(self, n):
@@ -121,22 +129,30 @@ class Softmax:
         exps = np.exp(n - n.max())
         return exps / np.sum(exps)
 
+    def jacobian(self, s):
+        #s = n.reshape(-1,1)
+        return np.diag(np.diag(s) - np.outer(s, s))
+
     def der(self, n):
-        jacobian = np.diag(n)
-        for i in range(len(jacobian)):
-            for j in range(len(jacobian)):
-                if i == j:
-                    jacobian[i][j] = n[i] * (1 - n[j])
-                else:
-                    jacobian[i][j] = -n[i] * n[j]
-        return jacobian
+        return np.array([self.jacobian(row) for row in n])
 
-class Loss:
-    def CrossEntropy(self, o, t):
-        return metrics.log_loss(t, o)
+class Cost:
+    class CrossEntropy:
+        def out(self, o, t, epsilon=1e-12):
+            o = np.clip(o, epsilon, 1. - epsilon)
+            N = o.shape[0]
+            return -np.sum(t * np.log(o + 1e-9))/N
 
-    def MeanSquareError(self, o, t):
-        return np.square(t - o).mean()
+        def der(self, o, t, layer):
+            return o - t
+
+    class MeanSquareError:
+        def out(self, o, t):
+            return np.sum(np.square(t - o)) / 2
+
+        def der(self, o, t, layer):
+            layer.dEdy = o - t
+            return layer.transfer.der(layer.ti) * layer.dEdy
 
 class Error:
     def out(self, y, t):
