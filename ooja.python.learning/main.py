@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import netdraw as nd
 from sklearn import datasets
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 #data = np.array([[0, 1],
@@ -16,7 +15,7 @@ from sklearn import metrics
 #     1,
 #     0])
 #mapper = [1]
-s = datasets.load_iris()
+s = datasets.load_digits()
 data = s.data
 target = s.target
 scaler = MinMaxScaler()
@@ -25,37 +24,24 @@ data = scaler.fit_transform(data, target)
 onehot = OneHotEncoder(sparse=False, categories='auto')
 target = onehot.fit_transform(target.reshape(len(target), 1))
 
-X_train, X_test, y_train, y_test = train_test_split(data, target, random_state=42)
-
 #mapper = np.unique(target)
 #mapper = np.arange(3)
 #ni = data.shape[1]
 #no = len(mapper)
 nsamples = len(data)
 
-
-
 n = network.Network(lambda o: np.round(o, 2))
-n.addlayer(17, ninput=4, transfer=network.Sigmoid())
-n.addlayer(3, transfer=network.Sigmoid(), cost=network.Cost.MeanSquareError())
+n.addlayer(4, ninput=64, transfer=network.Sigmoid())
+n.addlayer(10, transfer=network.Softmax(), cost=network.Cost.CrossEntropy())
 e = 1.
 i = 0
 minibatchsize = 20
 
-for i in range(1, 5000):
+for i in range(1, 500):
     print('\r'+str(i)+'      '+str(e), sep='', end='', flush=True)
-    #if e < 0.5:
-    #   break
-    e = 0.
-    for j in range(0, X_train.shape[0], minibatchsize):
-        X_train_mini = X_train[j:j + minibatchsize]
-        y_train_mini = y_train[j:j + minibatchsize]
-
-        y = n.forward(X_train_mini)
-        n.backprop(y_train_mini, .01)
-        e += n.E
-
-    e = e / minibatchsize
+    if e < 0.1:
+      break
+    e = n.sgd(data, target)
 
     #y = n.forward(normalized)
     #n.backprop(tencoded, .001)

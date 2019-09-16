@@ -3,6 +3,7 @@ from matplotlib import pylab
 import pylab as plt
 import netdraw as nd
 from sklearn import metrics
+from sklearn.model_selection import train_test_split
 
 class Network:
     def __init__(self, threshold, cost=None):
@@ -32,10 +33,13 @@ class Network:
         #self.E = np.sum(np.square(t - self.y)) / 2
         self.E = outlayer.cost.out(self.y, t)
         
+        analytic_dEdx = self.y - t
+        
         #outlayer.dEdy = t - self.y
         #outlayer.dEdx = outlayer.transfer.der(outlayer.ti) * outlayer.dEdy
-
-        outlayer.dEdx = outlayer.cost.der(self.y, t, outlayer)
+        
+        outlayer.dEdy = outlayer.cost.der(self.y, t)
+        outlayer.dEdx = outlayer.dEdy @ outlayer.transfer.der(outlayer.y)
         outlayer.dEdw = np.dot(outlayer.x.T,  outlayer.dEdx)
         outlayer.dEdb = np.sum(outlayer.dEdx, axis=0)
 
@@ -61,6 +65,29 @@ class Network:
         for l in self.layers:
             l.display()
         plt.show()
+
+    def sgd(self, X, y):
+        total_error = 0.
+        for j in range(0, len(X)):
+            output = self.forward(X[j])
+            self.backprop(y[j], .01)
+            total_error += self.E
+        total_error = total_error / len(X)
+        return total_error
+
+    def minibatch(self, X, y, minibatchsize):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+        total_error = 0.
+        for j in range(0, X_train.shape[0], minibatchsize):
+            X_train_mini = X_train[j:j + minibatchsize]
+            y_train_mini = y_train[j:j + minibatchsize]
+
+            output = self.forward(X_train_mini)
+            self.backprop(y_train_mini, .01)
+            total_error += self.E
+
+        total_error = total_error / len(X_train)
+        return total_error
 
 class Layer:
     def __init__(self, ninput, nneurons, transfer, cost):
@@ -90,8 +117,8 @@ class Layer:
         self.dEdb = np.sum(self.dEdx, axis=0)
 
     def display(self):
-        print("x={0}".format(self.x))
-        print("w={0}".format(self.w))
+        print("x={0}".format(self.x.shape))
+        print("w={0}".format(self.w.shape))
         print("dEdy={0}".format(self.dEdy))
         print("dEdx={0}".format(self.dEdx))
         print("dEdw={0}".format(self.dEdw))
@@ -129,12 +156,14 @@ class Softmax:
         exps = np.exp(n - n.max())
         return exps / np.sum(exps)
 
-    def jacobian(self, s):
-        #s = n.reshape(-1,1)
-        return np.diag(np.diag(s) - np.outer(s, s))
+    def jacobian(self, n):
+        s = n.reshape(-1,1)
+        return np.diagflat(s) - np.dot(s, s.T)
 
     def der(self, n):
-        return np.array([self.jacobian(row) for row in n])
+        #return self.jacobian(n)
+        res = np.array([self.jacobian(row) for row in n])
+        return res[0]
 
 class Cost:
     class CrossEntropy:
@@ -143,16 +172,15 @@ class Cost:
             N = o.shape[0]
             return -np.sum(t * np.log(o + 1e-9))/N
 
-        def der(self, o, t, layer):
-            return o - t
+        def der(self, o, t):
+            return -t / o
 
     class MeanSquareError:
         def out(self, o, t):
             return np.sum(np.square(t - o)) / 2
 
-        def der(self, o, t, layer):
-            layer.dEdy = o - t
-            return layer.transfer.der(layer.ti) * layer.dEdy
+        def der(self, o, t):
+            return t - o
 
 class Error:
     def out(self, y, t):
