@@ -83,10 +83,19 @@ class Network:
             y_train_mini = y_train[j:j + minibatchsize]
 
             output = self.forward(X_train_mini)
-            self.backprop(y_train_mini, .01)
+            self.backprop(y_train_mini, .0000001)
             total_error += self.E
 
         total_error = total_error / len(X_train)
+        return total_error
+
+    def batch(self, X, y):
+        total_error = 0.
+
+        output = self.forward(X)
+        self.backprop(y, .0000001)
+        total_error = self.E
+
         return total_error
 
 class Layer:
@@ -113,6 +122,7 @@ class Layer:
     def gradient(self, layer):
         self.dEdy = np.dot(layer.dEdx, layer.w.T)
         self.dEdx = self.transfer.der(self.ti) * self.dEdy
+        #self.dEdx = self.dEdy @ self.transfer.der(self.y).T
         self.dEdw = np.dot(self.x.T,  self.dEdx)
         self.dEdb = np.sum(self.dEdx, axis=0)
 

@@ -37,11 +37,13 @@ e = 1.
 i = 0
 minibatchsize = 20
 
-for i in range(1, 500):
+for i in range(1, 5000):
     print('\r'+str(i)+'      '+str(e), sep='', end='', flush=True)
     if e < 0.1:
       break
     e = n.sgd(data, target)
+    #e = n.minibatch(data, target, minibatchsize)
+    #e = n.batch(data, target)
 
     #y = n.forward(normalized)
     #n.backprop(tencoded, .001)
